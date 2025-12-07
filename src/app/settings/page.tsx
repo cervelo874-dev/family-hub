@@ -13,17 +13,10 @@ import { TYPE_LABELS } from '@/lib/types';
 
 export default function SettingsPage() {
     const router = useRouter();
-    const { family, members, resetOnboarding, deleteMember } = useFamilyStore();
+    const { family, members, deleteMember } = useFamilyStore();
     const [confirmReset, setConfirmReset] = useState(false);
 
-    const handleReset = () => {
-        if (confirmReset) {
-            resetOnboarding();
-            router.push('/');
-        } else {
-            setConfirmReset(true);
-        }
-    };
+    // function removed
 
     return (
         <>
@@ -90,36 +83,7 @@ export default function SettingsPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Danger Zone */}
-                    <Card className="rounded-2xl shadow-sm border-0 bg-red-50">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-base font-medium text-red-600">
-                                危険ゾーン
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-red-600 mb-4">
-                                すべてのデータをリセットして、初期設定からやり直します。
-                            </p>
-                            <Button
-                                variant="destructive"
-                                className="w-full rounded-xl"
-                                onClick={handleReset}
-                            >
-                                <RotateCcw className="w-4 h-4 mr-2" />
-                                {confirmReset ? '本当にリセットしますか？' : 'データをリセット'}
-                            </Button>
-                            {confirmReset && (
-                                <Button
-                                    variant="outline"
-                                    className="w-full rounded-xl mt-2"
-                                    onClick={() => setConfirmReset(false)}
-                                >
-                                    キャンセル
-                                </Button>
-                            )}
-                        </CardContent>
-                    </Card>
+                    {/* Danger Zone removed */}
                 </main>
             </div>
             <BottomNav />
