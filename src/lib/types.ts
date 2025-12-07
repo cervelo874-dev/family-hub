@@ -178,7 +178,7 @@ export const DEFAULT_CUSTOM_BUTTONS: Omit<CustomButton, 'id' | 'familyId'>[] = [
     { label: 'ごはん', icon: 'Utensils' },
     { label: 'おやつ', icon: 'Cookie' },
     { label: 'ねんね', icon: 'Moon' },
-    { label: 'おふろ', icon: 'Bath' },
+    { label: 'おさんぽ', icon: 'Footprints' },
     { label: 'おでかけ', icon: 'Car' },
     { label: 'おかいもの', icon: 'ShoppingCart' },
     { label: 'おてつだい', icon: 'Sparkles' },

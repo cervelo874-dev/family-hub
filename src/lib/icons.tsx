@@ -25,6 +25,7 @@ import {
     Settings,
     Plus,
     Trash2,
+    Footprints,
     LucideIcon,
 } from 'lucide-react';
 
@@ -56,6 +57,7 @@ const iconMap: Record<string, LucideIcon> = {
     Settings,
     Plus,
     Trash2,
+    Footprints,
 };
 
 // Get Lucide icon component by name
