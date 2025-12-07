@@ -9,7 +9,7 @@ import { StatusBadge } from './StatusBadge';
 import { QuickLogModal } from './QuickLogModal';
 import { TaskAddModal } from './TaskAddModal';
 import { useFamilyStore } from '@/lib/store';
-import { CustomButton, MemberStatus } from '@/lib/types';
+import { CustomButton, MemberStatus, DEFAULT_CUSTOM_BUTTONS } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { renderIcon } from '@/lib/icons';
 import {
@@ -38,6 +38,17 @@ export function Dashboard() {
         updateMemberStatus,
         toggleTaskComplete,
     } = useFamilyStore();
+
+    // Sort buttons based on DEFAULT_CUSTOM_BUTTONS order
+    const sortedButtons = [...customButtons].sort((a, b) => {
+        const indexA = DEFAULT_CUSTOM_BUTTONS.findIndex(btn => btn.label === a.label);
+        const indexB = DEFAULT_CUSTOM_BUTTONS.findIndex(btn => btn.label === b.label);
+        // If both found, sort by index. If not found, put at the end.
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+        if (indexA !== -1) return -1;
+        if (indexB !== -1) return 1;
+        return 0;
+    });
 
     const [selectedButton, setSelectedButton] = useState<CustomButton | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -187,7 +198,7 @@ export function Dashboard() {
                     </h2>
 
                     <div className="grid grid-cols-5 gap-2">
-                        {customButtons.map((button) => (
+                        {sortedButtons.map((button) => (
                             <Button
                                 key={button.id}
                                 variant="outline"
