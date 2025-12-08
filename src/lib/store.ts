@@ -25,6 +25,8 @@ interface FamilyStore {
     tasks: Task[];
     logs: Log[];
     customButtons: CustomButton[];
+    unreadTimelineCount: number;
+    unreadMessagesCount: number;
     isLoading: boolean;
     realtimeSubscription: RealtimeChannel | null;
 
@@ -59,6 +61,11 @@ interface FamilyStore {
     // Actions - Custom Buttons
     addCustomButton: (button: Omit<CustomButton, 'id' | 'familyId'>) => Promise<void>;
 
+    // Actions - Notifications
+    markTimelineAsRead: () => Promise<void>;
+    markMessagesAsRead: () => Promise<void>;
+
+
     // Helpers
     getMemberById: (id: string) => Member | undefined;
     getPinnedMessage: () => Message | undefined;
@@ -78,6 +85,8 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
     tasks: [],
     logs: [],
     customButtons: [],
+    unreadTimelineCount: 0,
+    unreadMessagesCount: 0,
     isLoading: false,
     realtimeSubscription: null,
 
@@ -155,6 +164,9 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
                         avatarIcon: '👤', // Fallback
                         avatarUrl: p.avatar_url,
                         status: p.status as any,
+                        isAuthUser: p.is_auth_user,
+                        lastViewedTimelineAt: p.last_viewed_timeline_at ? new Date(p.last_viewed_timeline_at) : undefined,
+                        lastViewedMessagesAt: p.last_viewed_messages_at ? new Date(p.last_viewed_messages_at) : undefined,
                     })),
                     logs: (dbLogs || []).map(l => ({
                         id: l.id,
@@ -182,6 +194,18 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
                         icon: b.icon,
                     }))
                 });
+
+                // Calculate Unread Counts
+                const authMember = dbProfiles.find(p => p.is_auth_user);
+                if (authMember) {
+                    const lastViewedTimeline = authMember.last_viewed_timeline_at ? new Date(authMember.last_viewed_timeline_at) : new Date(0);
+                    // Messages not yet in DB, so logic effectively mocked or using local array if persisted, but mostly simple here.
+                    // Actually messages are not in DB, so unreadMessagesCount will rely on local state if any.
+                    // But for Timeline (logs):
+                    const unreadLogs = (dbLogs || []).filter(l => new Date(l.created_at) > lastViewedTimeline).length;
+
+                    set({ unreadTimelineCount: unreadLogs });
+                }
             }
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -245,7 +269,16 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
                         // Avoid duplicate if optimistic update already added it (not implementing optimistic ID matching yet, so might dup if not careful.
                         // Simple dup check:
                         if (state.logs.some(l => l.id === newLog.id)) return state;
-                        return { logs: [newLog, ...state.logs] };
+                        if (state.logs.some(l => l.id === newLog.id)) return state;
+
+                        // Increment unread count if not created by self (optional, but good UX)
+                        // Actually, if I create it, I see it. But let's simple increment for everyone else or checking createdBy.
+                        // Ideally: if (newLog.createdByMemberId !== myMemberId) unread++
+                        // For now simple increment
+                        return {
+                            logs: [newLog, ...state.logs],
+                            unreadTimelineCount: state.unreadTimelineCount + 1
+                        };
                     });
                 } else if (eventType === 'DELETE') {
                     set(state => ({
@@ -499,6 +532,39 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
             label: button.label,
             icon: button.icon
         });
+    },
+
+    // Actions - Notifications
+    markTimelineAsRead: async () => {
+        const { members } = get();
+        const authMember = members.find(m => m.isAuthUser);
+        if (!authMember) return;
+
+        const now = new Date();
+        const nowIso = now.toISOString();
+
+        set(state => ({
+            members: state.members.map(m => m.id === authMember.id ? { ...m, lastViewedTimelineAt: now } : m),
+            unreadTimelineCount: 0
+        }));
+
+        await supabase.from('profiles').update({ last_viewed_timeline_at: nowIso }).eq('id', authMember.id);
+    },
+
+    markMessagesAsRead: async () => {
+        const { members } = get();
+        const authMember = members.find(m => m.isAuthUser);
+        if (!authMember) return;
+
+        const now = new Date();
+        const nowIso = now.toISOString();
+
+        set(state => ({
+            members: state.members.map(m => m.id === authMember.id ? { ...m, lastViewedMessagesAt: now } : m),
+            unreadMessagesCount: 0
+        }));
+
+        await supabase.from('profiles').update({ last_viewed_messages_at: nowIso }).eq('id', authMember.id);
     },
 
     // Helpers

@@ -85,6 +85,8 @@ export interface Member {
     avatarStyle?: string; // DiceBear style
     status: MemberStatus;
     isAuthUser?: boolean; // True if this profile is linked to the current auth user
+    lastViewedTimelineAt?: Date;
+    lastViewedMessagesAt?: Date;
 }
 
 // Database Interfaces (Supabase)
@@ -98,6 +100,8 @@ export interface DBProfile {
     theme_color: string;
     status: MemberStatus;
     is_auth_user: boolean;
+    last_viewed_timeline_at?: string;
+    last_viewed_messages_at?: string;
     created_at: string;
 }
 
