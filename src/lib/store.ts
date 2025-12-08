@@ -270,13 +270,13 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
                         // Simple dup check:
                         if (state.logs.some(l => l.id === newLog.id)) return state;
 
-                        // Increment unread count if not created by self (optional, but good UX)
-                        // Actually, if I create it, I see it. But let's simple increment for everyone else or checking createdBy.
-                        // Ideally: if (newLog.createdByMemberId !== myMemberId) unread++
-                        // For now simple increment
+                        // Increment unread count only if not created by self
+                        const authMember = state.members.find(m => m.isAuthUser);
+                        const isSelf = authMember && authMember.id === newLog.createdByMemberId;
+
                         return {
                             logs: [newLog, ...state.logs],
-                            unreadTimelineCount: state.unreadTimelineCount + 1
+                            unreadTimelineCount: isSelf ? state.unreadTimelineCount : state.unreadTimelineCount + 1
                         };
                     });
                 } else if (eventType === 'DELETE') {
