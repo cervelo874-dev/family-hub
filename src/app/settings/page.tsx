@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2, RotateCcw } from 'lucide-react';
+import { Trash2, RotateCcw, LogOut } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MemberIcon } from '@/components/feature/MemberIcon';
@@ -84,6 +84,27 @@ export default function SettingsPage() {
                     </Card>
 
                     {/* Danger Zone removed */}
+
+                    {/* Account */}
+                    <Card className="rounded-2xl shadow-sm border-0 bg-white/80 backdrop-blur">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base font-medium">アカウント</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Button
+                                variant="outline"
+                                className="w-full h-12 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
+                                onClick={async () => {
+                                    const { supabase } = await import('@/lib/supabase');
+                                    await supabase.auth.signOut();
+                                    router.push('/login');
+                                }}
+                            >
+                                <LogOut className="w-4 h-4 mr-2" />
+                                ログアウト
+                            </Button>
+                        </CardContent>
+                    </Card>
                 </main>
             </div>
             <BottomNav />
