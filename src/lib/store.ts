@@ -97,7 +97,7 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
             .from('profiles')
             .select('*')
             .eq('user_id', userId) // Assuming we link auth user to profile via user_id
-            .single();
+            .maybeSingle();
 
         if (profile && profile.family_id) {
             // Already in a family
@@ -268,7 +268,6 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
                     set(state => {
                         // Avoid duplicate if optimistic update already added it (not implementing optimistic ID matching yet, so might dup if not careful.
                         // Simple dup check:
-                        if (state.logs.some(l => l.id === newLog.id)) return state;
                         if (state.logs.some(l => l.id === newLog.id)) return state;
 
                         // Increment unread count if not created by self (optional, but good UX)
