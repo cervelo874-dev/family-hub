@@ -158,7 +158,19 @@ export function Onboarding() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-cyan-50 flex flex-col">
-            <header className="px-4 py-6 text-center">
+            <header className="px-4 py-6 text-center relative">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-4 top-6 text-gray-400 hover:text-red-500"
+                    onClick={async () => {
+                        const { supabase } = await import('@/lib/supabase');
+                        await supabase.auth.signOut();
+                        window.location.href = '/login';
+                    }}
+                >
+                    ログアウト
+                </Button>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
                     Family Hub 🏠
                 </h1>
