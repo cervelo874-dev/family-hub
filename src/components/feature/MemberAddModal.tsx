@@ -106,13 +106,28 @@ export function MemberAddModal({ trigger }: MemberAddModalProps) {
         setLoading(true);
 
         try {
+            // Determine avatar configuration
+            let finalAvatarUrl: string | undefined = undefined;
+            let finalAvatarStyle: string | undefined = undefined;
+
+            if (useCustomImage) {
+                // Custom uploaded image
+                finalAvatarUrl = avatarUrl || undefined;
+            } else if (avatarUrl?.startsWith('preset:')) {
+                // Selected preset
+                finalAvatarUrl = avatarUrl;
+            } else {
+                // Auto (DiceBear)
+                finalAvatarStyle = avatarStyle;
+            }
+
             await addMember({
                 name: name.trim(),
                 type,
                 themeColor,
                 avatarIcon: '👤', // Legacy fallback
-                avatarUrl: useCustomImage ? avatarUrl || undefined : undefined,
-                avatarStyle: useCustomImage ? undefined : avatarStyle,
+                avatarUrl: finalAvatarUrl,
+                avatarStyle: finalAvatarStyle,
                 status: 'home',
             });
 

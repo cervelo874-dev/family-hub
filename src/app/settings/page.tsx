@@ -10,6 +10,7 @@ import { MemberAddModal } from '@/components/feature/MemberAddModal';
 import { useFamilyStore } from '@/lib/store';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { TYPE_LABELS } from '@/lib/types';
+import { toast } from 'sonner';
 
 export default function SettingsPage() {
     const router = useRouter();
@@ -72,7 +73,16 @@ export default function SettingsPage() {
                                                 variant="ghost"
                                                 size="sm"
                                                 className="text-gray-400 hover:text-red-500"
-                                                onClick={() => deleteMember(member.id)}
+                                                onClick={async () => {
+                                                    if (!confirm(`${member.name}を削除しますか？\n(過去のログなどは残ります)`)) return;
+                                                    try {
+                                                        await deleteMember(member.id);
+                                                        // toast.success('削除しました'); // Realtime will remove it
+                                                    } catch (e) {
+                                                        toast.error('削除に失敗しました。関連データがある可能性があります。');
+                                                        console.error(e);
+                                                    }
+                                                }}
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
