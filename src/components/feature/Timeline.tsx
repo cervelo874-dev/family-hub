@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Filter, Trash2, Loader2 } from 'lucide-react';
+import { Filter, Trash2, Loader2, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ export function Timeline() {
     const { logs, members, customButtons, getMemberById, deleteLog } = useFamilyStore();
     const [filterMemberId, setFilterMemberId] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
     const filteredLogs = filterMemberId
         ? logs.filter((log) => log.targetMemberIds.includes(filterMemberId))
@@ -164,7 +165,11 @@ export function Timeline() {
                                                     <img
                                                         src={log.photoUrl}
                                                         alt="添付写真"
-                                                        className="w-full h-32 object-cover rounded-xl mb-2"
+                                                        className="w-full h-32 object-cover rounded-xl mb-2 cursor-zoom-in hover:opacity-95 transition-opacity"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setZoomedImage(log.photoUrl!);
+                                                        }}
                                                     />
                                                 )}
                                                 <div className="flex items-center gap-2 flex-wrap">
@@ -202,6 +207,27 @@ export function Timeline() {
                     )}
                 </div>
             </main>
+
+            {/* Image Modal */}
+            {zoomedImage && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setZoomedImage(null)}
+                >
+                    <button
+                        className="absolute top-4 right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors"
+                        onClick={() => setZoomedImage(null)}
+                    >
+                        <X className="w-8 h-8" />
+                    </button>
+                    <img
+                        src={zoomedImage}
+                        alt="拡大表示"
+                        className="max-h-[85vh] max-w-full rounded-lg shadow-2xl object-contain"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div>
     );
 }
