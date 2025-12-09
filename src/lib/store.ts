@@ -66,6 +66,9 @@ interface FamilyStore {
     markTimelineAsRead: () => Promise<void>;
     markMessagesAsRead: () => Promise<void>;
 
+    // Actions - Reset
+    resetFamily: () => Promise<void>;
+
 
     // Helpers
     getMemberById: (id: string) => Member | undefined;
@@ -619,6 +622,40 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
         }));
 
         await supabase.from('profiles').update({ last_viewed_messages_at: nowIso }).eq('id', authMember.id);
+    },
+
+    // Actions - Reset
+    resetFamily: async () => {
+        const familyId = get().family?.id;
+        if (!familyId) return;
+
+        set({ isLoading: true });
+
+        try {
+            // 1. Delete all profiles (triggers cascade for logs/messages)
+            await supabase.from('profiles').delete().eq('family_id', familyId);
+
+            // 2. Delete the family (triggers cascade for tasks/buttons/etc)
+            await supabase.from('families').delete().eq('id', familyId);
+
+            // 3. Reset local state
+            set({
+                isOnboarded: false,
+                family: null,
+                members: [],
+                messages: [],
+                tasks: [],
+                logs: [],
+                customButtons: [],
+                realtimeSubscription: null
+            });
+
+        } catch (e) {
+            console.error('Reset failed:', e);
+            throw e;
+        } finally {
+            set({ isLoading: false });
+        }
     },
 
     // Helpers
