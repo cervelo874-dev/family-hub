@@ -48,6 +48,7 @@ interface FamilyStore {
     // Actions - Messages
     addMessage: (content: string, createdByMemberId: string, isPinned?: boolean) => Promise<void>;
     toggleMessagePin: (id: string) => Promise<void>;
+    deleteMessage: (id: string) => Promise<void>;
 
     // Actions - Tasks
     addTask: (title: string, assignedToMemberId?: string) => Promise<void>;
@@ -92,15 +93,13 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
 
     // Actions - Initialization
     setSessionUser: async (userId: string) => {
-        // Here we could fetch the user's profile to see if they belong to a family
         const { data: profile } = await supabase
             .from('profiles')
             .select('*')
-            .eq('user_id', userId) // Assuming we link auth user to profile via user_id
+            .eq('user_id', userId)
             .maybeSingle();
 
         if (profile && profile.family_id) {
-            // Already in a family
             set({ isOnboarded: true });
             await get().fetchFamilyData();
             get().subscribeToChanges();
@@ -108,20 +107,12 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
     },
 
     fetchFamilyData: async () => {
-        // ... (Logic kept same, but simplified for brevity in this tool call context, 
-        // RE-INJECTING because tool 'write_to_file' overwrites the file!)
-        // Wait, I should use multi_replace? No, 'write_to_file' overwrites.
-        // I need to paste the FULL content including the new logic.
-
         set({ isLoading: true });
         try {
-            // Fetch Family (Assuming user is associated with one via profile, but for now getting the first one linked or we rely on profile.family_id)
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            // Get current user's profile to find family_id
             let familyId: string | null = null;
-
             const { data: userProfile } = await supabase
                 .from('profiles')
                 .select('family_id')
@@ -152,6 +143,9 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
             // Fetch Custom Buttons
             const { data: dbButtons } = await supabase.from('custom_buttons').select('*').eq('family_id', familyId);
 
+            // Fetch Messages
+            const { data: dbMessages } = await supabase.from('messages').select('*').eq('family_id', familyId).order('created_at', { ascending: false });
+
             if (family && dbProfiles) {
                 set({
                     isOnboarded: true,
@@ -161,7 +155,7 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
                         name: p.name,
                         type: p.type as any,
                         themeColor: p.theme_color,
-                        avatarIcon: '👤', // Fallback
+                        avatarIcon: '👤',
                         avatarUrl: p.avatar_url,
                         status: p.status as any,
                         isAuthUser: p.is_auth_user,
@@ -192,6 +186,14 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
                         familyId: b.family_id,
                         label: b.label,
                         icon: b.icon,
+                    })),
+                    messages: (dbMessages || []).map(m => ({
+                        id: m.id,
+                        familyId: m.family_id,
+                        content: m.content,
+                        createdByMemberId: m.created_by_member_id,
+                        isPinned: m.is_pinned,
+                        createdAt: new Date(m.created_at),
                     }))
                 });
 
@@ -199,12 +201,15 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
                 const authMember = dbProfiles.find(p => p.is_auth_user);
                 if (authMember) {
                     const lastViewedTimeline = authMember.last_viewed_timeline_at ? new Date(authMember.last_viewed_timeline_at) : new Date(0);
-                    // Messages not yet in DB, so logic effectively mocked or using local array if persisted, but mostly simple here.
-                    // Actually messages are not in DB, so unreadMessagesCount will rely on local state if any.
-                    // But for Timeline (logs):
-                    const unreadLogs = (dbLogs || []).filter(l => new Date(l.created_at) > lastViewedTimeline).length;
+                    const lastViewedMessages = authMember.last_viewed_messages_at ? new Date(authMember.last_viewed_messages_at) : new Date(0);
 
-                    set({ unreadTimelineCount: unreadLogs });
+                    const unreadLogs = (dbLogs || []).filter(l => new Date(l.created_at) > lastViewedTimeline).length;
+                    const unreadMessages = (dbMessages || []).filter(m => new Date(m.created_at) > lastViewedMessages).length;
+
+                    set({
+                        unreadTimelineCount: unreadLogs,
+                        unreadMessagesCount: unreadMessages
+                    });
                 }
             }
         } catch (error) {
@@ -253,7 +258,6 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
             .on('postgres_changes', { event: '*', schema: 'public', table: 'logs', filter: `family_id=eq.${familyId}` }, (payload) => {
                 const { eventType, new: newRec, old: oldRec } = payload;
                 if (eventType === 'INSERT') {
-                    // Since logs are typically time-ordered, inserting at start is usually better for UI, assuming prepending
                     const newLog: Log = {
                         id: newRec.id,
                         familyId: newRec.family_id,
@@ -266,11 +270,8 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
                         createdAt: new Date(newRec.created_at),
                     };
                     set(state => {
-                        // Avoid duplicate if optimistic update already added it (not implementing optimistic ID matching yet, so might dup if not careful.
-                        // Simple dup check:
                         if (state.logs.some(l => l.id === newLog.id)) return state;
 
-                        // Increment unread count only if not created by self
                         const authMember = state.members.find(m => m.isAuthUser);
                         const isSelf = authMember && authMember.id === newLog.createdByMemberId;
 
@@ -284,7 +285,42 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
                         logs: state.logs.filter(l => l.id !== oldRec.id)
                     }));
                 }
-                // Updates to logs (not implemented in UI but supported technically)
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `family_id=eq.${familyId}` }, (payload) => {
+                const { eventType, new: newRec, old: oldRec } = payload;
+                if (eventType === 'INSERT') {
+                    const newMessage: Message = {
+                        id: newRec.id,
+                        familyId: newRec.family_id,
+                        content: newRec.content,
+                        createdByMemberId: newRec.created_by_member_id,
+                        isPinned: newRec.is_pinned,
+                        createdAt: new Date(newRec.created_at),
+                    };
+                    set(state => {
+                        if (state.messages.some(m => m.id === newMessage.id)) return state;
+
+                        const authMember = state.members.find(m => m.isAuthUser);
+                        const isSelf = authMember && authMember.id === newMessage.createdByMemberId;
+
+                        return {
+                            messages: [newMessage, ...state.messages],
+                            unreadMessagesCount: isSelf ? state.unreadMessagesCount : state.unreadMessagesCount + 1
+                        };
+                    });
+                } else if (eventType === 'UPDATE') {
+                    set(state => ({
+                        messages: state.messages.map(m => m.id === newRec.id ? {
+                            ...m,
+                            content: newRec.content,
+                            isPinned: newRec.is_pinned
+                        } : m)
+                    }));
+                } else if (eventType === 'DELETE') {
+                    set(state => ({
+                        messages: state.messages.filter(m => m.id !== oldRec.id)
+                    }));
+                }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `family_id=eq.${familyId}` }, (payload) => {
                 const { eventType, new: newRec, old: oldRec } = payload;
@@ -312,7 +348,6 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'custom_buttons', filter: `family_id=eq.${familyId}` }, (payload) => {
-                // Similar logic
                 if (payload.eventType === 'INSERT') {
                     const newBtn = payload.new;
                     set(state => ({
@@ -397,7 +432,6 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
             avatar_url: member.avatarUrl,
             status: member.status,
         });
-        // Realtime will handle state update
     },
 
     updateMember: async (id, updates) => {
@@ -407,7 +441,6 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
             avatar_url: updates.avatarUrl,
             status: updates.status,
         }).eq('id', id);
-        // Realtime will handle state update
     },
 
     deleteMember: async (id) => {
@@ -415,14 +448,12 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
     },
 
     updateMemberStatus: async (id, status) => {
-        // Optimistic update for immediate feedback
         set((state) => ({
             members: state.members.map((m) =>
                 m.id === id ? { ...m, status } : m
             )
         }));
         await supabase.from('profiles').update({ status }).eq('id', id);
-        // Realtime will confirm it
     },
 
     // Actions - Logs
@@ -430,7 +461,6 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
         const familyId = get().family?.id;
         if (!familyId) return;
 
-        // Upload photo if present (Base64 -> File -> Storage)
         let photoUrl = log.photoUrl;
         if (photoUrl && photoUrl.startsWith('data:')) {
             const res = await fetch(photoUrl);
@@ -458,12 +488,10 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
             created_by_member_id: log.createdByMemberId,
             target_member_ids: log.targetMemberIds,
         });
-        // Realtime will handle state update
     },
 
     deleteLog: async (id) => {
         await supabase.from('logs').delete().eq('id', id);
-        // Optimistic delete
         set((state) => ({
             logs: state.logs.filter((l) => l.id !== id),
         }));
@@ -485,7 +513,6 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
         const task = get().tasks.find(t => t.id === id);
         if (!task) return;
 
-        // Optimistic update
         set((state) => ({
             tasks: state.tasks.map((t) =>
                 t.id === id ? { ...t, isCompleted: !t.isCompleted } : t
@@ -496,33 +523,45 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
 
     deleteTask: async (id) => {
         await supabase.from('tasks').delete().eq('id', id);
-        // Filter is handled by realtime DELETE event too, but optimistic is fine
         set((state) => ({
             tasks: state.tasks.filter((t) => t.id !== id),
         }));
     },
 
+    // Actions - Messages
     addMessage: async (content, createdByMemberId, isPinned) => {
-        console.warn('Messages table not yet in DB');
-        set((state) => ({
-            messages: [{
-                id: crypto.randomUUID(),
-                familyId: state.family?.id || '',
-                content,
-                createdByMemberId,
-                isPinned: !!isPinned,
-                createdAt: new Date()
-            }, ...state.messages]
-        }));
+        const { family } = get();
+        if (!family) return;
+
+        await supabase.from('messages').insert({
+            family_id: family.id,
+            created_by_member_id: createdByMemberId,
+            content: content,
+            is_pinned: isPinned || false
+        });
     },
+
     toggleMessagePin: async (id) => {
+        const message = get().messages.find(m => m.id === id);
+        if (!message) return;
+
+        // Optimistic
         set((state) => ({
             messages: state.messages.map((m) =>
                 m.id === id ? { ...m, isPinned: !m.isPinned } : m
             ),
         }));
+        await supabase.from('messages').update({ is_pinned: !message.isPinned }).eq('id', id);
     },
 
+    deleteMessage: async (id) => {
+        await supabase.from('messages').delete().eq('id', id);
+        set((state) => ({
+            messages: state.messages.filter((m) => m.id !== id),
+        }));
+    },
+
+    // Actions - Custom Buttons
     addCustomButton: async (button) => {
         const familyId = get().family?.id;
         if (!familyId) return;

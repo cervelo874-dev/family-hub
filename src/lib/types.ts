@@ -126,6 +126,15 @@ export interface DBTask {
     created_at: string;
 }
 
+export interface DBMessage {
+    id: string;
+    family_id: string;
+    created_by_member_id: string;
+    content: string;
+    is_pinned: boolean;
+    created_at: string;
+}
+
 // Family Interface
 export interface Family {
     id: string;
