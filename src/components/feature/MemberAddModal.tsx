@@ -3,9 +3,11 @@
 import { useState, useRef } from 'react';
 import { Plus, Upload, X, Palette, Camera, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AVATAR_PRESETS } from '@/lib/constants';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useFamilyStore } from '@/lib/store';
+import { MemberIcon } from './MemberIcon';
 import { MEMBER_COLORS, MemberType, TYPE_LABELS, TYPE_ICONS } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { renderIcon } from '@/lib/icons';
@@ -210,38 +212,85 @@ export function MemberAddModal({ trigger }: MemberAddModalProps) {
                     <div className="space-y-3">
                         <label className="text-sm font-medium text-gray-700">アイコン</label>
 
-                        {/* Toggle: Auto vs Custom */}
-                        <div className="flex gap-2">
+                        {/* Mode Selection */}
+                        <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
                             <button
                                 type="button"
-                                onClick={() => { setUseCustomImage(false); setAvatarUrl(null); }}
+                                onClick={() => { setUseCustomImage(false); setAvatarUrl(''); /* cleared denotes preset mode if starts with preset: */ }}
                                 className={cn(
-                                    'flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-sm transition-all',
-                                    !useCustomImage
-                                        ? 'bg-teal-100 text-teal-700 ring-2 ring-teal-400'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    'flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all',
+                                    !useCustomImage && (!avatarUrl || avatarUrl.startsWith('preset:'))
+                                        ? 'bg-white text-teal-700 shadow-sm'
+                                        : 'text-gray-500 hover:bg-gray-200'
                                 )}
                             >
-                                <Palette className="w-4 h-4" />
+                                イラスト
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setUseCustomImage(false); setAvatarUrl('auto'); /* Special flag for auto */ }}
+                                className={cn(
+                                    'flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all',
+                                    !useCustomImage && avatarUrl === 'auto'
+                                        ? 'bg-white text-teal-700 shadow-sm'
+                                        : 'text-gray-500 hover:bg-gray-200'
+                                )}
+                            >
                                 自動生成
                             </button>
                             <button
                                 type="button"
-                                onClick={() => setUseCustomImage(true)}
+                                onClick={() => { setUseCustomImage(true); setAvatarUrl(null); }}
                                 className={cn(
-                                    'flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-sm transition-all',
+                                    'flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all',
                                     useCustomImage
-                                        ? 'bg-teal-100 text-teal-700 ring-2 ring-teal-400'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        ? 'bg-white text-teal-700 shadow-sm'
+                                        : 'text-gray-500 hover:bg-gray-200'
                                 )}
                             >
-                                <Camera className="w-4 h-4" />
-                                画像アップロード
+                                写真
                             </button>
                         </div>
 
+                        {/* Preset Selection */}
+                        {!useCustomImage && (!avatarUrl || avatarUrl.startsWith('preset:') || avatarUrl === '') && (
+                            <div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto p-1">
+                                {AVATAR_PRESETS.map((p) => {
+                                    const presetId = `preset:${p.id}`;
+                                    const isSelected = avatarUrl === presetId || (!avatarUrl && p.id === 'dad'); // Default selection
+
+                                    // Set default on first render if empty
+                                    if (!avatarUrl && p.id === 'dad') {
+                                        setTimeout(() => setAvatarUrl(presetId), 0);
+                                    }
+
+                                    return (
+                                        <button
+                                            key={p.id}
+                                            type="button"
+                                            onClick={() => setAvatarUrl(presetId)}
+                                            className={cn(
+                                                'aspect-square rounded-full border-2 transition-all overflow-hidden relative',
+                                                isSelected ? 'border-teal-500 ring-2 ring-teal-200' : 'border-transparent hover:border-gray-200'
+                                            )}
+                                        >
+                                            <div
+                                                className="w-full h-full"
+                                                style={{
+                                                    backgroundImage: `url(${p.src})`,
+                                                    backgroundPosition: p.pos,
+                                                    backgroundSize: p.size,
+                                                    backgroundRepeat: 'no-repeat',
+                                                }}
+                                            />
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+
                         {/* Auto-generated styles */}
-                        {!useCustomImage && (
+                        {!useCustomImage && avatarUrl === 'auto' && (
                             <div className="flex gap-2 overflow-x-auto pb-2">
                                 {DICEBEAR_STYLES.map((style) => (
                                     <button
@@ -314,10 +363,24 @@ export function MemberAddModal({ trigger }: MemberAddModalProps) {
                         <p className="text-xs text-gray-500 mb-2">プレビュー</p>
                         <div className="flex items-center gap-3">
                             <div
-                                className="w-14 h-14 rounded-full overflow-hidden border-2 bg-gray-100"
+                                className="border-2 rounded-full"
                                 style={{ borderColor: themeColor }}
                             >
-                                <img src={previewUrl} alt="プレビュー" className="w-full h-full object-cover" />
+                                <MemberIcon
+                                    size="lg"
+                                    showBorder={false}
+                                    member={{
+                                        id: 'preview',
+                                        name: name || '名前',
+                                        themeColor: themeColor,
+                                        type: type,
+                                        // This is the tricky part. We need to construct a partial member object
+                                        avatarUrl: !useCustomImage && avatarUrl === 'auto' ? undefined : (avatarUrl || undefined),
+                                        avatarStyle: !useCustomImage && avatarUrl === 'auto' ? avatarStyle : undefined,
+                                        // If in preset mode but no selection, default to Dad
+                                        ...((!useCustomImage && !avatarUrl) ? { avatarUrl: 'preset:dad' } : {})
+                                    } as any}
+                                />
                             </div>
                             <div>
                                 <p className="font-medium">{name || '名前を入力...'}</p>

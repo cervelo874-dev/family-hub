@@ -12,6 +12,9 @@ interface MemberIconProps {
     isSelected?: boolean;
 }
 
+// ... imports
+import { AVATAR_PRESETS } from '@/lib/constants';
+
 const sizeClasses = {
     sm: { container: 'w-8 h-8', text: 'text-lg', imgSize: 32 },
     md: { container: 'w-12 h-12', text: 'text-2xl', imgSize: 48 },
@@ -41,9 +44,13 @@ export function MemberIcon({
     isSelected = false,
 }: MemberIconProps) {
     const sizeConfig = sizeClasses[size];
-
-    // Priority: 1. User uploaded image, 2. DiceBear generated, 3. Emoji fallback
     const hasUploadedImage = !!member.avatarUrl;
+
+    // Check if it's a preset
+    const preset = member.avatarUrl?.startsWith('preset:')
+        ? AVATAR_PRESETS.find(p => p.id === member.avatarUrl?.replace('preset:', ''))
+        : null;
+
     const diceBearUrl = getDiceBearUrl(member.name, member.avatarStyle || 'notionists');
 
     return (
@@ -56,7 +63,7 @@ export function MemberIcon({
         >
             <div
                 className={cn(
-                    'flex items-center justify-center rounded-full shadow-sm transition-all duration-200 overflow-hidden bg-gray-100',
+                    'flex items-center justify-center rounded-full shadow-sm transition-all duration-200 overflow-hidden bg-white', // changed bg to white for transparent jpgs
                     sizeConfig.container,
                     showBorder && 'ring-2 ring-offset-2',
                     isSelected && 'ring-4 ring-offset-0 scale-110',
@@ -67,7 +74,17 @@ export function MemberIcon({
                     ...(showBorder && { '--tw-ring-color': member.themeColor } as React.CSSProperties),
                 }}
             >
-                {hasUploadedImage ? (
+                {preset ? (
+                    <div
+                        className="w-full h-full"
+                        style={{
+                            backgroundImage: `url(${preset.src})`,
+                            backgroundPosition: preset.pos,
+                            backgroundSize: preset.size,
+                            backgroundRepeat: 'no-repeat',
+                        }}
+                    />
+                ) : hasUploadedImage ? (
                     <img
                         src={member.avatarUrl}
                         alt={member.name}
@@ -90,5 +107,4 @@ export function MemberIcon({
     );
 }
 
-// Export for use in other components
 export { getDiceBearUrl, DICEBEAR_STYLES };
