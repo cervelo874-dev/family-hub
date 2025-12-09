@@ -533,7 +533,23 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
         const { family } = get();
         if (!family) return;
 
+        const newId = crypto.randomUUID();
+        const newMessage: Message = {
+            id: newId,
+            familyId: family.id,
+            content: content,
+            createdByMemberId: createdByMemberId,
+            isPinned: isPinned || false,
+            createdAt: new Date()
+        };
+
+        // Optimistic update
+        set((state) => ({
+            messages: [newMessage, ...state.messages]
+        }));
+
         await supabase.from('messages').insert({
+            id: newId,
             family_id: family.id,
             created_by_member_id: createdByMemberId,
             content: content,
