@@ -48,7 +48,7 @@ export function BottomNav() {
                                     </span>
                                 )}
                             </div>
-                            <span className="text-xs font-medium">{item.label}</span>
+                            <span className="text-[10px] sm:text-xs font-medium whitespace-nowrap">{item.label}</span>
                         </Link>
                     );
                 })}
