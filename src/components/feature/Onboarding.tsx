@@ -2,8 +2,9 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Users, Upload, X, Plus, Loader2 } from 'lucide-react';
+import { ChevronRight, Users, Upload, X, Plus, Loader2, Palette, Camera } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AVATAR_PRESETS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MemberIcon } from './MemberIcon';
@@ -47,7 +48,20 @@ export function Onboarding() {
     const [newMemberType, setNewMemberType] = useState<MemberType>('adult');
     const [newMemberColor, setNewMemberColor] = useState<string>(MEMBER_COLORS[0]);
     const [newMemberStyle, setNewMemberStyle] = useState('notionists');
-    const [newMemberAvatarUrl, setNewMemberAvatarUrl] = useState<string | null>(null);
+    const [newMemberAvatarUrl, setNewMemberAvatarUrl] = useState<string | null>(null); // url, 'preset:...', or 'auto' logic needed?
+    // Let's use logic similar to MemberAddModal:
+    // If !useCustomImage:
+    //   if newMemberAvatarUrl startsWith 'preset:' -> preset
+    //   if newMemberAvatarUrl == 'auto' -> auto
+    //   else -> auto default?
+    // Actually in MemberAddModal: default is preset:dad if nothing selected.
+
+    // In Onboarding, let's keep it simple:
+    // useCustomImage = true -> Uploaded image in newMemberAvatarUrl
+    // useCustomImage = false -> 
+    //    if newMemberAvatarUrl startsWith 'preset:' -> Preset
+    //    else -> Auto (DiceBear) using newMemberStyle
+
     const [useCustomImage, setUseCustomImage] = useState(false);
     const [showMemberForm, setShowMemberForm] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -120,13 +134,26 @@ export function Onboarding() {
     const handleAddMember = () => {
         if (!newMemberName.trim()) return;
 
+        // Determine final avatar URL
+        let finalAvatarUrl: string | undefined = undefined;
+        let finalAvatarStyle: string | undefined = undefined;
+
+        if (useCustomImage) {
+            finalAvatarUrl = newMemberAvatarUrl || undefined;
+        } else if (newMemberAvatarUrl?.startsWith('preset:')) {
+            finalAvatarUrl = newMemberAvatarUrl;
+        } else {
+            // Auto
+            finalAvatarStyle = newMemberStyle;
+        }
+
         const newMember: Omit<Member, 'id'> = {
             name: newMemberName.trim(),
             type: newMemberType,
             themeColor: newMemberColor,
             avatarIcon: '👤',
-            avatarUrl: useCustomImage ? newMemberAvatarUrl || undefined : undefined,
-            avatarStyle: useCustomImage ? undefined : newMemberStyle,
+            avatarUrl: finalAvatarUrl,
+            avatarStyle: finalAvatarStyle,
             status: 'home',
         };
 
@@ -362,8 +389,20 @@ export function Onboarding() {
 
                                         {/* Preview */}
                                         <div className="flex items-center gap-3 p-3 bg-white rounded-xl border">
-                                            <div className="w-12 h-12 rounded-full overflow-hidden border-2 bg-gray-100" style={{ borderColor: newMemberColor }}>
-                                                <img src={previewUrl} alt="プレビュー" className="w-full h-full object-cover" />
+                                            <div className="w-14 h-14 rounded-full border-2" style={{ borderColor: newMemberColor }}>
+                                                <MemberIcon
+                                                    size="md"
+                                                    showBorder={false}
+                                                    member={{
+                                                        id: 'preview',
+                                                        name: newMemberName || '名',
+                                                        themeColor: newMemberColor,
+                                                        type: newMemberType,
+                                                        avatarUrl: !useCustomImage && newMemberAvatarUrl === 'auto' ? undefined : (newMemberAvatarUrl || undefined),
+                                                        avatarStyle: !useCustomImage && newMemberAvatarUrl === 'auto' ? newMemberStyle : undefined,
+                                                        ...((!useCustomImage && !newMemberAvatarUrl) ? { avatarUrl: 'preset:dad' } : {})
+                                                    } as any}
+                                                />
                                             </div>
                                             <div>
                                                 <p className="font-medium text-sm">{newMemberName || '名前...'}</p>
