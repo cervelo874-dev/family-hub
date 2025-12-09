@@ -35,7 +35,7 @@ export function QuickLogModal({ isOpen, onClose, selectedButton }: QuickLogModal
         );
     };
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -44,44 +44,25 @@ export function QuickLogModal({ isOpen, onClose, selectedButton }: QuickLogModal
             return;
         }
 
-        if (file.size > 2 * 1024 * 1024) {
-            toast.error('画像サイズは2MB以下にしてください');
-            return;
-        }
+        try {
+            // Import utility dynamically or statically (statically is better)
+            const { compressImage } = await import('@/lib/compression');
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const result = event.target?.result as string;
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const maxSize = 800;
-                let width = img.width;
-                let height = img.height;
+            // Compress
+            const compressedFile = await compressImage(file);
 
-                if (width > height) {
-                    if (width > maxSize) {
-                        height = (height * maxSize) / width;
-                        width = maxSize;
-                    }
-                } else {
-                    if (height > maxSize) {
-                        width = (width * maxSize) / height;
-                        height = maxSize;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx?.drawImage(img, 0, 0, width, height);
-
-                const compressedUrl = canvas.toDataURL('image/jpeg', 0.8);
-                setPhotoUrl(compressedUrl);
+            // Convert to Data URL for preview and upload
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setPhotoUrl(event.target?.result as string);
+                // Also reset file input to allow re-uploading same file if needed (implicitly handled by ref reset in remove)
             };
-            img.src = result;
-        };
-        reader.readAsDataURL(file);
+            reader.readAsDataURL(compressedFile);
+
+        } catch (error) {
+            console.error('Image compression failed:', error);
+            toast.error('画像の処理に失敗しました');
+        }
     };
 
     const handleRemovePhoto = () => {
