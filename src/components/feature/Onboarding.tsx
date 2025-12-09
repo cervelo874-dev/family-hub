@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Users, Upload, X, Plus, Loader2, Palette, Camera } from 'lucide-react';
+import { ChevronRight, Users, Upload, X, Plus, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AVATAR_PRESETS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
@@ -48,20 +48,7 @@ export function Onboarding() {
     const [newMemberType, setNewMemberType] = useState<MemberType>('adult');
     const [newMemberColor, setNewMemberColor] = useState<string>(MEMBER_COLORS[0]);
     const [newMemberStyle, setNewMemberStyle] = useState('notionists');
-    const [newMemberAvatarUrl, setNewMemberAvatarUrl] = useState<string | null>(null); // url, 'preset:...', or 'auto' logic needed?
-    // Let's use logic similar to MemberAddModal:
-    // If !useCustomImage:
-    //   if newMemberAvatarUrl startsWith 'preset:' -> preset
-    //   if newMemberAvatarUrl == 'auto' -> auto
-    //   else -> auto default?
-    // Actually in MemberAddModal: default is preset:dad if nothing selected.
-
-    // In Onboarding, let's keep it simple:
-    // useCustomImage = true -> Uploaded image in newMemberAvatarUrl
-    // useCustomImage = false -> 
-    //    if newMemberAvatarUrl startsWith 'preset:' -> Preset
-    //    else -> Auto (DiceBear) using newMemberStyle
-
+    const [newMemberAvatarUrl, setNewMemberAvatarUrl] = useState<string | null>(null);
     const [useCustomImage, setUseCustomImage] = useState(false);
     const [showMemberForm, setShowMemberForm] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -83,7 +70,6 @@ export function Onboarding() {
         const reader = new FileReader();
         reader.onload = (event) => {
             const result = event.target?.result as string;
-            // Similar logic to compress image if needed, for now just setting
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
@@ -178,10 +164,6 @@ export function Onboarding() {
             toast.error('エラーが発生しました: ' + (error.message || '不明なエラー'));
         }
     };
-
-    const previewUrl = useCustomImage && newMemberAvatarUrl
-        ? newMemberAvatarUrl
-        : getDiceBearUrl(newMemberName, newMemberStyle);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-cyan-50 flex flex-col">
@@ -385,8 +367,8 @@ export function Onboarding() {
                                             )}
 
                                             {/* DiceBear Style Selection */}
-                                            {!useCustomImage && (
-                                                <div className="flex gap-2 overflow-x-auto scroolbar-hide">
+                                            {!useCustomImage && newMemberAvatarUrl === 'auto' && (
+                                                <div className="flex gap-2 overflow-x-auto">
                                                     {DICEBEAR_STYLES.map((style) => (
                                                         <button
                                                             key={style.id}
@@ -433,46 +415,47 @@ export function Onboarding() {
                                                     )}
                                                 </div>
                                             )}
+                                        </div>
 
-                                            {/* Preview */}
-                                            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border">
-                                                <div className="w-14 h-14 rounded-full border-2" style={{ borderColor: newMemberColor }}>
-                                                    <MemberIcon
-                                                        size="md"
-                                                        showBorder={false}
-                                                        member={{
-                                                            id: 'preview',
-                                                            name: newMemberName || '名',
-                                                            themeColor: newMemberColor,
-                                                            type: newMemberType,
-                                                            avatarUrl: !useCustomImage && newMemberAvatarUrl === 'auto' ? undefined : (newMemberAvatarUrl || undefined),
-                                                            avatarStyle: !useCustomImage && newMemberAvatarUrl === 'auto' ? newMemberStyle : undefined,
-                                                            ...((!useCustomImage && !newMemberAvatarUrl) ? { avatarUrl: 'preset:dad' } : {})
-                                                        } as any}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-sm">{newMemberName || '名前...'}</p>
-                                                    <p className="text-xs text-gray-500">{TYPE_LABELS[newMemberType]}</p>
-                                                </div>
+                                        {/* Preview */}
+                                        <div className="flex items-center gap-3 p-3 bg-white rounded-xl border">
+                                            <div className="w-14 h-14 rounded-full border-2" style={{ borderColor: newMemberColor }}>
+                                                <MemberIcon
+                                                    size="md"
+                                                    showBorder={false}
+                                                    member={{
+                                                        id: 'preview',
+                                                        name: newMemberName || '名',
+                                                        themeColor: newMemberColor,
+                                                        type: newMemberType,
+                                                        avatarUrl: !useCustomImage && newMemberAvatarUrl === 'auto' ? undefined : (newMemberAvatarUrl || undefined),
+                                                        avatarStyle: !useCustomImage && newMemberAvatarUrl === 'auto' ? newMemberStyle : undefined,
+                                                        ...((!useCustomImage && !newMemberAvatarUrl) ? { avatarUrl: 'preset:dad' } : {})
+                                                    } as any}
+                                                />
                                             </div>
-
-                                            <div className="flex gap-2 pt-2">
-                                                <Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={() => setShowMemberForm(false)}>
-                                                    キャンセル
-                                                </Button>
-                                                <Button type="button" className="flex-1 rounded-xl bg-gradient-to-r from-teal-400 to-cyan-500" onClick={handleAddMember} disabled={!newMemberName.trim()}>
-                                                    追加
-                                                </Button>
+                                            <div>
+                                                <p className="font-medium text-sm">{newMemberName || '名前...'}</p>
+                                                <p className="text-xs text-gray-500">{TYPE_LABELS[newMemberType]}</p>
                                             </div>
                                         </div>
-                                        ) : (
-                                        <Button type="button" variant="outline" className="w-full h-14 rounded-xl border-dashed" onClick={() => setShowMemberForm(true)}>
-                                            <Plus className="w-5 h-5 mr-2" />
-                                            メンバーを追加
-                                        </Button>
+
+                                        <div className="flex gap-2 pt-2">
+                                            <Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={() => setShowMemberForm(false)}>
+                                                キャンセル
+                                            </Button>
+                                            <Button type="button" className="flex-1 rounded-xl bg-gradient-to-r from-teal-400 to-cyan-500" onClick={handleAddMember} disabled={!newMemberName.trim()}>
+                                                追加
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <Button type="button" variant="outline" className="w-full h-14 rounded-xl border-dashed" onClick={() => setShowMemberForm(true)}>
+                                        <Plus className="w-5 h-5 mr-2" />
+                                        メンバーを追加
+                                    </Button>
                                 )}
-                                    </CardContent>
+                            </CardContent>
                         </Card>
 
                         <Button
