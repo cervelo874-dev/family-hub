@@ -307,125 +307,172 @@ export function Onboarding() {
                                         </div>
 
                                         {/* Avatar Mode Toggle */}
-                                        <div className="space-y-2">
+                                        <div className="space-y-3">
                                             <label className="text-sm font-medium text-gray-700">アイコン</label>
-                                            <div className="flex gap-2">
+                                            <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
                                                 <button
                                                     type="button"
-                                                    onClick={() => { setUseCustomImage(false); setNewMemberAvatarUrl(null); }}
+                                                    onClick={() => { setUseCustomImage(false); setNewMemberAvatarUrl(''); }}
                                                     className={cn(
-                                                        'flex-1 py-2 px-2 rounded-xl text-xs transition-all',
-                                                        !useCustomImage
-                                                            ? 'bg-teal-100 text-teal-700 ring-2 ring-teal-400'
-                                                            : 'bg-gray-100 text-gray-600'
+                                                        'flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all',
+                                                        !useCustomImage && (!newMemberAvatarUrl || newMemberAvatarUrl.startsWith('preset:'))
+                                                            ? 'bg-white text-teal-700 shadow-sm'
+                                                            : 'text-gray-500 hover:bg-gray-200'
                                                     )}
                                                 >
-                                                    🎨 自動生成
+                                                    イラスト
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={() => setUseCustomImage(true)}
+                                                    onClick={() => { setUseCustomImage(false); setNewMemberAvatarUrl('auto'); }}
                                                     className={cn(
-                                                        'flex-1 py-2 px-2 rounded-xl text-xs transition-all',
+                                                        'flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all',
+                                                        !useCustomImage && newMemberAvatarUrl === 'auto'
+                                                            ? 'bg-white text-teal-700 shadow-sm'
+                                                            : 'text-gray-500 hover:bg-gray-200'
+                                                    )}
+                                                >
+                                                    自動生成
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setUseCustomImage(true); setNewMemberAvatarUrl(null); }}
+                                                    className={cn(
+                                                        'flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all',
                                                         useCustomImage
-                                                            ? 'bg-teal-100 text-teal-700 ring-2 ring-teal-400'
-                                                            : 'bg-gray-100 text-gray-600'
+                                                            ? 'bg-white text-teal-700 shadow-sm'
+                                                            : 'text-gray-500 hover:bg-gray-200'
                                                     )}
                                                 >
-                                                    📷 画像
+                                                    写真
                                                 </button>
                                             </div>
-                                        </div>
 
-                                        {/* DiceBear Style Selection */}
-                                        {!useCustomImage && (
-                                            <div className="flex gap-2 overflow-x-auto scroolbar-hide">
-                                                {DICEBEAR_STYLES.map((style) => (
-                                                    <button
-                                                        key={style.id}
-                                                        type="button"
-                                                        onClick={() => setNewMemberStyle(style.id)}
-                                                        className={cn(
-                                                            'flex flex-col items-center p-2 rounded-xl min-w-[60px]',
-                                                            newMemberStyle === style.id
-                                                                ? 'bg-gray-100 ring-2 ring-gray-800'
-                                                                : 'hover:bg-gray-50'
-                                                        )}
-                                                    >
-                                                        <img
-                                                            src={getDiceBearUrl(newMemberName || 'preview', style.id)}
-                                                            alt={style.label}
-                                                            className="w-10 h-10 rounded-full bg-gray-100"
-                                                        />
-                                                        <span className="text-xs mt-1">{style.label}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
+                                            {/* Preset Selection */}
+                                            {!useCustomImage && (!newMemberAvatarUrl || newMemberAvatarUrl.startsWith('preset:') || newMemberAvatarUrl === '') && (
+                                                <div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto p-1">
+                                                    {AVATAR_PRESETS.map((p) => {
+                                                        const presetId = `preset:${p.id}`;
+                                                        const isSelected = newMemberAvatarUrl === presetId || (!newMemberAvatarUrl && p.id === 'dad');
 
-                                        {/* Image Upload */}
-                                        {useCustomImage && (
-                                            <div>
-                                                {newMemberAvatarUrl ? (
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-12 h-12 rounded-full overflow-hidden border-2" style={{ borderColor: newMemberColor }}>
-                                                            <img src={newMemberAvatarUrl} alt="アバター" className="w-full h-full object-cover" />
+                                                        if (!newMemberAvatarUrl && p.id === 'dad') {
+                                                            setTimeout(() => setNewMemberAvatarUrl(presetId), 0);
+                                                        }
+
+                                                        return (
+                                                            <button
+                                                                key={p.id}
+                                                                type="button"
+                                                                onClick={() => setNewMemberAvatarUrl(presetId)}
+                                                                className={cn(
+                                                                    'aspect-square rounded-full border-2 transition-all overflow-hidden relative',
+                                                                    isSelected ? 'border-teal-500 ring-2 ring-teal-200' : 'border-transparent hover:border-gray-200'
+                                                                )}
+                                                            >
+                                                                <div
+                                                                    className="w-full h-full"
+                                                                    style={{
+                                                                        backgroundImage: `url(${p.src})`,
+                                                                        backgroundPosition: p.pos,
+                                                                        backgroundSize: p.size,
+                                                                        backgroundRepeat: 'no-repeat',
+                                                                    }}
+                                                                />
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            {/* DiceBear Style Selection */}
+                                            {!useCustomImage && (
+                                                <div className="flex gap-2 overflow-x-auto scroolbar-hide">
+                                                    {DICEBEAR_STYLES.map((style) => (
+                                                        <button
+                                                            key={style.id}
+                                                            type="button"
+                                                            onClick={() => setNewMemberStyle(style.id)}
+                                                            className={cn(
+                                                                'flex flex-col items-center p-2 rounded-xl min-w-[60px]',
+                                                                newMemberStyle === style.id
+                                                                    ? 'bg-gray-100 ring-2 ring-gray-800'
+                                                                    : 'hover:bg-gray-50'
+                                                            )}
+                                                        >
+                                                            <img
+                                                                src={getDiceBearUrl(newMemberName || 'preview', style.id)}
+                                                                alt={style.label}
+                                                                className="w-10 h-10 rounded-full bg-gray-100"
+                                                            />
+                                                            <span className="text-xs mt-1">{style.label}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Image Upload */}
+                                            {useCustomImage && (
+                                                <div>
+                                                    {newMemberAvatarUrl ? (
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-12 h-12 rounded-full overflow-hidden border-2" style={{ borderColor: newMemberColor }}>
+                                                                <img src={newMemberAvatarUrl} alt="アバター" className="w-full h-full object-cover" />
+                                                            </div>
+                                                            <Button type="button" variant="outline" size="sm" onClick={handleRemoveImage} className="text-red-500">
+                                                                <X className="w-4 h-4 mr-1" /> 削除
+                                                            </Button>
                                                         </div>
-                                                        <Button type="button" variant="outline" size="sm" onClick={handleRemoveImage} className="text-red-500">
-                                                            <X className="w-4 h-4 mr-1" /> 削除
-                                                        </Button>
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="onboard-avatar" />
-                                                        <label htmlFor="onboard-avatar" className="flex items-center justify-center gap-2 w-full h-14 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-teal-400 hover:bg-teal-50">
-                                                            <Upload className="w-4 h-4 text-gray-400" />
-                                                            <span className="text-sm text-gray-500">アップロード</span>
-                                                        </label>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
+                                                    ) : (
+                                                        <div>
+                                                            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="onboard-avatar" />
+                                                            <label htmlFor="onboard-avatar" className="flex items-center justify-center gap-2 w-full h-14 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-teal-400 hover:bg-teal-50">
+                                                                <Upload className="w-4 h-4 text-gray-400" />
+                                                                <span className="text-sm text-gray-500">アップロード</span>
+                                                            </label>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
 
-                                        {/* Preview */}
-                                        <div className="flex items-center gap-3 p-3 bg-white rounded-xl border">
-                                            <div className="w-14 h-14 rounded-full border-2" style={{ borderColor: newMemberColor }}>
-                                                <MemberIcon
-                                                    size="md"
-                                                    showBorder={false}
-                                                    member={{
-                                                        id: 'preview',
-                                                        name: newMemberName || '名',
-                                                        themeColor: newMemberColor,
-                                                        type: newMemberType,
-                                                        avatarUrl: !useCustomImage && newMemberAvatarUrl === 'auto' ? undefined : (newMemberAvatarUrl || undefined),
-                                                        avatarStyle: !useCustomImage && newMemberAvatarUrl === 'auto' ? newMemberStyle : undefined,
-                                                        ...((!useCustomImage && !newMemberAvatarUrl) ? { avatarUrl: 'preset:dad' } : {})
-                                                    } as any}
-                                                />
+                                            {/* Preview */}
+                                            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border">
+                                                <div className="w-14 h-14 rounded-full border-2" style={{ borderColor: newMemberColor }}>
+                                                    <MemberIcon
+                                                        size="md"
+                                                        showBorder={false}
+                                                        member={{
+                                                            id: 'preview',
+                                                            name: newMemberName || '名',
+                                                            themeColor: newMemberColor,
+                                                            type: newMemberType,
+                                                            avatarUrl: !useCustomImage && newMemberAvatarUrl === 'auto' ? undefined : (newMemberAvatarUrl || undefined),
+                                                            avatarStyle: !useCustomImage && newMemberAvatarUrl === 'auto' ? newMemberStyle : undefined,
+                                                            ...((!useCustomImage && !newMemberAvatarUrl) ? { avatarUrl: 'preset:dad' } : {})
+                                                        } as any}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-sm">{newMemberName || '名前...'}</p>
+                                                    <p className="text-xs text-gray-500">{TYPE_LABELS[newMemberType]}</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="font-medium text-sm">{newMemberName || '名前...'}</p>
-                                                <p className="text-xs text-gray-500">{TYPE_LABELS[newMemberType]}</p>
+
+                                            <div className="flex gap-2 pt-2">
+                                                <Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={() => setShowMemberForm(false)}>
+                                                    キャンセル
+                                                </Button>
+                                                <Button type="button" className="flex-1 rounded-xl bg-gradient-to-r from-teal-400 to-cyan-500" onClick={handleAddMember} disabled={!newMemberName.trim()}>
+                                                    追加
+                                                </Button>
                                             </div>
                                         </div>
-
-                                        <div className="flex gap-2 pt-2">
-                                            <Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={() => setShowMemberForm(false)}>
-                                                キャンセル
-                                            </Button>
-                                            <Button type="button" className="flex-1 rounded-xl bg-gradient-to-r from-teal-400 to-cyan-500" onClick={handleAddMember} disabled={!newMemberName.trim()}>
-                                                追加
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <Button type="button" variant="outline" className="w-full h-14 rounded-xl border-dashed" onClick={() => setShowMemberForm(true)}>
-                                        <Plus className="w-5 h-5 mr-2" />
-                                        メンバーを追加
-                                    </Button>
+                                        ) : (
+                                        <Button type="button" variant="outline" className="w-full h-14 rounded-xl border-dashed" onClick={() => setShowMemberForm(true)}>
+                                            <Plus className="w-5 h-5 mr-2" />
+                                            メンバーを追加
+                                        </Button>
                                 )}
-                            </CardContent>
+                                    </CardContent>
                         </Card>
 
                         <Button
